@@ -17,7 +17,8 @@ const options = {
 
 const SECRET = "ton_secret_webhook"; // même que dans GitHub
 
-app.post("/github-webhook", (req, res) => {
+app.post("/github-webhook/:id", (req, res) => {
+  let id=req.params.id;  
   const signature = req.headers["x-hub-signature-256"];
   const payload = JSON.stringify(req.body);
 
@@ -30,7 +31,7 @@ app.post("/github-webhook", (req, res) => {
   }
 
   // Déploiement
-  exec("cd /home/asantero/miniblogmysql && git pull origin main && npm install && pm2 restart mon-app", (err, stdout, stderr) => {
+  exec("cd /home/asantero/"+id+" && git pull origin main && npm install && pm2 restart mon-app", (err, stdout, stderr) => {
     if (err) {
       console.error(err);
       return res.status(500).send("Deploy failed");
