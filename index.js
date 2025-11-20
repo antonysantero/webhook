@@ -5,7 +5,9 @@ const fs = require('fs');
 const https = require('https');
 
 const app = express();
+app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+
 
 // Charger les certificats SSL
 const options = {
