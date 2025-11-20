@@ -1,37 +1,45 @@
 const express = require("express");
 const { exec } = require("child_process");
 const crypto = require("crypto");
-const fs = require('fs');
-const https = require('https');
+const fs = require("fs");
+const https = require("https");
+const bodyParser = require("body-parser");
 
 const app = express();
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
 
+// Middleware pour capturer le raw body
+app.use(bodyParser.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 
-// Charger les certificats SSL
+  
 const options = {
   key: fs.readFileSync('/tmp/certs/privkey.pem'),
   cert: fs.readFileSync('/tmp/certs/fullchain.pem')
 };
 
-const SECRET = "ton_secret_webhook"; // même que dans GitHub
+const SECRET = "ton_secret_webhook";
 
 app.post("/github-webhook/:id", (req, res) => {
-  let id=req.params.id;  
+  let id=req.params.id;
   const signature = req.headers["x-hub-signature-256"];
-  const payload = JSON.stringify(req.body);
-
-  // Vérification de la signature
+  console.log("Payload JSON:", req.body);
+  // Calcul sur le raw body
   const hmac = crypto.createHmac("sha256", SECRET);
-  const digest = "sha256=" + hmac.update(payload).digest("hex");
+  const digest = "sha256=" + hmac.update(req.rawBody).digest("hex");
+
+  console.log("GitHub signature:", signature);
+  console.log("Calculated digest:", digest);
 
   if (signature !== digest) {
     return res.status(401).send("Invalid signature");
   }
 
-  // Déploiement
-  exec("cd /home/asantero/"+id+" && git pull origin main && npm install && pm2 restart mon-app", (err, stdout, stderr) => {
+  console.log("Payload JSON:", req.body);
+
+  exec("cd /home/asantero@sio-savary-85.local/"+id+" && git pull origin main && npm install && pm2 restart index.js", (err, stdout, stderr) => {
     if (err) {
       console.error(err);
       return res.status(500).send("Deploy failed");
@@ -41,9 +49,6 @@ app.post("/github-webhook/:id", (req, res) => {
   });
 });
 
-// Lancer le serveur HTTPS
 https.createServer(options, app).listen(10050, () => {
-  console.log('Serveur HTTPS démarré sur le port 10050');
+  console.log("Serveur HTTPS démarré sur le port 10050");
 });
-
-
